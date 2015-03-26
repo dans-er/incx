@@ -9,3 +9,14 @@
 
 # RStudio files
 .Rproj.user/
+
+# mac os system files
+.DS_Store
+
+# serveraddress text file
+serveraddress.txt
+
+# data directories
+data/
+logs/
+ref/
