@@ -163,9 +163,6 @@ remote.ls <- local(function(filter = NULL, despwf = TRUE) {
         df$role <- factor(as.integer(df$role), levels = roleLevels)
         df$ip_address <- as.factor(df$ip_address)
         
-        #df$agent1 <- as.factor(bot.lookup1(as.character(df$ip_address)))
-        #df$agent2 <- as.factor(bot.lookup2(as.character(df$ip_address)))
-        
         #dt <- as.data.table(df)
         #dt[, agent1:=as.factor(bot.lookup1(as.character(ip_address)))]
         #dt[, agent2:=as.factor(bot.lookup2(as.character(ip_address)))]
