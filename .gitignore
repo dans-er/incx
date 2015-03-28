@@ -1,28 +1,31 @@
-# History files
-.Rhistory
-
-# Example code in package build process
-*-Ex.R
-
-# R data files from past sessions
-.Rdata
-
-# RStudio files
-.Rproj.user/
 README.html
 
-# mac os system files
-.DS_Store
+# History files
+**/.Rhistory
 
-# serveraddress text file
-serveraddress.txt
+# Example code in package build process
+**/*-Ex.R
+
+# R data files from past sessions
+**/.Rdata
+
+# RStudio files
+**/.Rproj.user/
+
+
+# mac os system files
+**/.DS_Store
 
 # data directories
-data/
-logs/
-ref/
+**/data/
+**/logs/
+**/ref/
+
+######### daily_usage #######
+# serveraddress text file
+daily_usage/serveraddress.txt
 
 # stuff from markdown
-daily_usage_cache/
-daily_usage.html
+daily_usage/daily_usage_cache/
+daily_usage/daily_usage.html
 

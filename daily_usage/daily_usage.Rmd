@@ -1,0 +1,183 @@
+---
+title: "An easy day"
+output:
+  html_document:
+    toc: true
+---
+<style>
+div.hideme {display: none}
+</style>
+<script>
+doclick=function(e){
+        code = e.nextSibling.nextSibling
+        if(code.style.display=="block") {
+                 code.style.display='none';
+                 e.textContent="Show Code"
+        }else{
+                 code.style.display="block";
+                 e.textContent="Hide Code"
+        }
+}
+</script>
+
+```{r global_options, echo=FALSE, message=FALSE}
+source("readlogs.R")
+source("bot_collector.R")
+source("geo_ip.R")
+
+require(data.table)
+require(reshape2)
+```
+
+
+```{r load_data, cache=TRUE, message=FALSE, results='hide', echo=FALSE}
+yesterday <- Sys.Date() - 1
+yesterfor <- format(yesterday, "%A %d-%m-%Y")
+dt.log <- remote.data.table(yesterday)
+dt.log[, agent:=ip.agent(ip_address)]
+dt.events <- data.table(read.csv("ref/stats_events.csv", stringsAsFactors = FALSE))
+setkey(dt.events, "id")
+```
+*Report based on the log file from `r yesterfor` (`r nrow(dt.log)` events)* 
+
+### Geographic spread of client IP-addresses   
+<!--<button class="hidecode" onclick="doclick(this);">Show Code</button>
+<div class="hideme">-->
+```{r geo_spread, results='hide', message=FALSE, echo=FALSE}
+## get the unique IP-addresses
+dt.ips <- dt.log[, j=list(frequency = .N), by = c("ip_address")]
+dt.ips[, agent:=ip.agent(ip_address)]
+setkey(dt.ips, "ip_address")
+# 
+## get a table with geo information on the addresses
+dt.gip <- geo.info(dt.ips$ip_address)
+dt.ll <- dt.gip[!(is.na(longitude) | is.na(latitude)),]
+dt.ll <- merge(dt.ll, dt.ips, by = "ip_address")
+
+require(maps)
+require(mapdata)
+
+# do some colouring
+agents <- levels(factor(dt.ll$agent))
+cols <- rainbow(length(agents), start=0.3, alpha=0.3)
+sats <- rainbow(length(agents), start=0.3, alpha=1)
+dt.col <- data.table(agent = agents, color = cols, sat = sats)
+dt.world <- merge(dt.ll, dt.col, by = "agent")
+max.color <- dt.world[which.max(frequency),]$sat
+max.agent <- dt.world[which.max(frequency),]$agent
+max.frequency <- dt.world[which.max(frequency),]$frequency
+```
+<!--</div>-->
+```{r plot_geo_spread, fig.width=9, fig.height=6, echo = FALSE}
+op <- par(mar = c(0, 1, 4, 1))
+map('worldHires', , mar = c(0,0,2,0))
+points(x = dt.world$longitude, y = dt.world$latitude, col=dt.world$color, 
+       pch=19, cex = log10(dt.world$frequency) * 3)
+# legend point
+rect(xleft = -180, xright = -50, ybottom = -90, ytop = -60, col = "white", border = "white")
+points(x = -160, y = -70, pch=21, cex = log10(1000) * 3, 
+       col = max.color, bg="white")
+points(x = -160, y = -70, pch=21, cex = log10(100) * 3, 
+       col = max.color, bg="white")
+points(x = -160, y = -70, pch=21, cex = log10(10) * 3, 
+       col = max.color, bg="white")
+points(x = -160, y = -70, pch=21, cex = log10(2) * 3, 
+       col = max.color, bg="white")
+
+text(x = -147, y = -80, labels="number of requests per IP-address:\n1000, 100, 10, 2 requests", 
+     cex = 0.8, pos = 4)
+
+legend(x = "bottomright", legend = dt.col$agent, col=dt.col$sat, 
+       pch = 19, cex = 0.8, horiz=TRUE, bg = "white")
+title(main = paste("Spread of requests, world-wide, ", yesterfor))
+par(op)
+```
+
+The number of requests per IP-address world-wide is shown in the
+graphic above. Each circle represents one client IP, the diameter of the
+circle corresponds to the number of requests from that client on a logarithmic scale.
+Color codes show the type of client we are dealing with. Usually a large
+amount of search bots is active and concentrated on the west-coast of
+the United States. IP-addresses from private ranges are not geo-tracked.
+
+The top-client of the day was a `r max.agent` IP-address, with `r max.frequency` requests.
+
+<table><tr><td width="63%">
+```{r plot_eu_spread, echo = FALSE, fig.height=4.3, fig.width=5.8}
+#xl <- -11; xr <- 25; yb <- 45; yt <- 58
+xl <- -11; xr <- 29; yb <- 42; yt <- 58.5
+dt.eu <- dt.world[longitude >= xl & longitude <= xr & latitude >= yb & latitude <= yt]
+
+op <- par(mar = c(1, 1, 4, 1))
+map('worldHires', xlim=c(xl, xr), ylim=c(yb, yt), mar = c(0,0,3,2), fill=TRUE, col="lightyellow")
+points(x = dt.eu$longitude, y = dt.eu$latitude, col=dt.eu$color, 
+       pch=19, cex = log10(dt.eu$frequency) * 3)
+title(main = paste("Spread of requests, neighbouring countries"),
+      cex.main = 0.95)
+par(op)
+```
+</td><td width="37%">
+```{r plot_nl_spread, echo=FALSE, fig.height=4.3, fig.width=3.4}
+## nl_spread
+xl <- 3.3; xr <- 7.25; yb <- 50.75; yt <- 53.49
+dt.nl <- dt.world[longitude >= xl & longitude <= xr & latitude >= yb & latitude <= yt]
+
+op <- par(mar = c(1, 1, 4, 1))
+map('worldHires', xlim=c(xl, xr), ylim=c(yb, yt), mar = c(0,2,3,0))
+points(x = dt.nl$longitude, y = dt.nl$latitude, col=dt.nl$color, 
+       pch=19, cex = log10(dt.nl$frequency) * 3)
+title(main = paste0("Spread of requests\nNetherlands"), 
+      cex.main = 0.95)
+par(op)
+```
+</td></tr></table>
+
+### Summary of events
+ 
+<button class="hidecode" onclick="doclick(this);">Show Code</button>
+<div class="hideme">
+```{r event_frequency, results='hide'}
+## counts per event_id, agent
+dt.fat <- dt.log[, j=list(frequency = .N), by = c("event_id", "agent")]
+dt.fat.wide <- dcast(dt.fat, event_id ~ agent, value.var = "frequency", fill = "")
+setnames(dt.fat.wide, old = "event_id", new = "id")
+
+## counts per event
+dt.counts <- dt.log[, j=list(frequency = .N), by = c("event_id")]
+setnames(dt.counts, old = "event_id", new = "id")
+
+## merges with event description and split-counts per agent type
+dt.counts <- merge(dt.counts, dt.events[, c(1, 4), with = FALSE], by = "id", all.x = TRUE)
+dt.counts <- merge(dt.counts, dt.fat.wide, by = "id", all.x = TRUE)
+align <- rep("r", ncol(dt.counts) - 1)
+align[2] <- "l"
+```
+</div>
+
+`r knitr::kable(dt.counts[order(frequency, decreasing = TRUE), -1, with = FALSE], 
+format = "markdown", align = align)`
+
+The table above shows a summary of the registered events during `r yesterfor`. 
+The column **frequency** gives the total count of the events in **event description**.
+The column **normal** gives the count per event that was triggered by a 'normal'
+IP-addresses, the column(s) **private.x** give the score from in-house IP-addresses.
+The rest of the requests were triggered by various search bots.
+
+*****************
+<small>
+Information based on `r paste0("statistics.log.", yesterday)`.   
+Search bots detection was based on information from http://www.iplists.com/nw/ and
+http://chceme.info/ips/ (there are more bots than detected).   
+Geograhic information on IP-addresses from http://www.telize.com    
+Report generated: `r format(Sys.time(), "%A %d-%m-%Y %H:%M:%S")`   
+</small>
+
+<small>Logged events represent only a portion of user activity or requests to the server.
+An *event* is always triggered by a client request; some requests trigger more than
+one event. When speaking of *requests* above, we actually mean *events*.
+</small>
+
+*****************
+
+
+
