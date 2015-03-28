@@ -28,7 +28,7 @@ local({
 .load.all <- local(function() {
         # message("Loading reference tables.")
         stats_events <<- read.csv("ref/stats_events.csv")
-        serveraddress <<- readLines("serveraddress.txt", n = 1)
+        serveraddress <<- readLines("serveraddress.txt", n = 2)
 }, env = read.logs.env)
 
 .load.all()
@@ -111,7 +111,7 @@ remote.read.data <- local(function(filename, despwf = TRUE) {
         # read the serveraddress
         serveraddress <- readLines("serveraddress.txt", n = 1)
         
-        com <- paste("ssh ", serveraddress ," 'cat /data/statsdata/logs/", filename, "'", sep = "")
+        com <- paste("ssh ", serveraddress[1] ," 'cat /data/statsdata/logs/", filename, "'", sep = "")
         pip <- pipe(com)
         data <- readLines(pip, skipNul = TRUE)
         close(pip)
@@ -139,7 +139,7 @@ remote.save.data <- local(function(filename, despwf = TRUE) {
 #' @param filter a function that filters files on filename.
 remote.ls <- local(function(filter = NULL, despwf = TRUE) {
         .create_pwf()
-        pip <- pipe(paste0('ssh ', serveraddress, ' "ls -1 /data/statsdata/logs"'))
+        pip <- pipe(paste0('ssh ', serveraddress[1], ' "ls -1 /data/statsdata/logs"'))
         ls <- readLines(pip)
         close(pip)
         .destroy_pwf(despwf)
@@ -158,7 +158,8 @@ remote.ls <- local(function(filter = NULL, despwf = TRUE) {
         df <- as.data.frame(.cd.commonMat(data), stringsAsFactors = FALSE)
         colnames(df) <- c("date_time", "event_id", "user", "role", "ip_address")
         df$date_time <- as.POSIXct(df$date_time)
-        df$event_id <- factor(as.integer(df$event_id), levels = eventLevels)
+        #df$event_id <- factor(as.integer(df$event_id), levels = eventLevels)
+        df$event_id <- as.integer(df$event_id)
         df$user <- as.factor(df$user)
         df$role <- factor(as.integer(df$role), levels = roleLevels)
         df$ip_address <- as.factor(df$ip_address)
@@ -317,12 +318,16 @@ filter.research.period <- function(filename,
 
 # If TMPPWF does not exist, ask for non-interactive ssh password file
 # and create TMPPWF.
-.create_pwf <- local(function() {
+.create_pwf <- local(function(ask = FALSE) {
         if (!file.exists(TMPPWF)) {
-                pass <- .rs.askForPassword("Enter password for server:")
-                if (is.null(pass)) {
-                        message("User aborted action.")
-                        return(NULL)
+                if (ask) {
+                        pass <- .rs.askForPassword("Enter password for server:")
+                        if (is.null(pass)) {
+                                message("User aborted action.")
+                                return(NULL)
+                        }
+                } else {
+                        pass <- serveraddress[2]
                 }
                 writeLines(paste("#!/bin/bash --\n\necho \"", pass, "\"", sep = ""), TMPPWF)
                 Sys.chmod(TMPPWF)

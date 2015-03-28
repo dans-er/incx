@@ -9,6 +9,7 @@
 
 # RStudio files
 .Rproj.user/
+README.html
 
 # mac os system files
 .DS_Store
@@ -19,4 +20,9 @@ serveraddress.txt
 # data directories
 data/
 logs/
+ref/
+
+# stuff from markdown
+daily_usage_cache/
+daily_usage.html
 
